@@ -60,10 +60,32 @@ def _label_filename(filename):
 
 if __name__ == '__main__':
     files = glob.glob(f'{directory}/*.xml')
-    print("Writing results to %s" % output_file)
+    output_file_tmp = output_file + "_tmp"
+    print("Writing results to temp file %s" % output_file_tmp)
     with multiprocessing.Pool() as p:
         all_labels = tqdm(p.imap(_label_filename, files), total=len(files))
-        with open(output_file, 'w') as output:
+        with open(output_file_tmp, 'w') as output:
             for label_list in all_labels:
                 for (cat, name) in label_list:
                     output.write(f'__label__{cat} {name}\n')
+    #sort output file
+    input_file = open(output_file_tmp)
+    lines = input_file.readlines()
+    lines.sort()
+    count = 0
+    cur_cat = ""
+    line_holder = ""
+    print("Writing results to %s" % output_file)
+    with open(output_file, 'w') as output:
+        for line in lines:
+            tokens = line.split()
+            line_holder += line
+            if tokens[0] == cur_cat:
+                count += 1
+            else:
+                if count > min_products:
+                    output.write(line_holder)
+                cur_cat = tokens[0]
+                count = 0
+                line_holder = ""
+    print("Done.")
