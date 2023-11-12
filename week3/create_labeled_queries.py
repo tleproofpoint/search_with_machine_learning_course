@@ -60,7 +60,7 @@ for index, row in queries_df.iterrows():
 # IMPLEMENT ME: Roll up categories to ancestors to satisfy the minimum number of queries per category.
 while True:
     queries_df_grouped = queries_df.groupby('category', as_index = False, sort = True).count()
-    filtered_queries_df_grouped = queries_df_grouped[queries_df_grouped['query'] < 1000]
+    filtered_queries_df_grouped = queries_df_grouped[queries_df_grouped['query'] < min_queries]
     merged_filtered_queries_df_grouped = pd.merge(filtered_queries_df_grouped, parents_df, on='category')
     size = merged_filtered_queries_df_grouped.size
     if size <= 1:
