@@ -4,6 +4,8 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import numpy as np
 import csv
+import re
+from nltk.stem import *
 
 # Useful if you want to perform stemming.
 import nltk
@@ -46,11 +48,40 @@ parents_df = pd.DataFrame(list(zip(categories, parents)), columns =['category', 
 
 # Read the training data into pandas, only keeping queries with non-root categories in our category tree.
 queries_df = pd.read_csv(queries_file_name)[['category', 'query']]
-queries_df = queries_df[queries_df['category'].isin(categories)]
+queries_df = queries_df[queries_df['category'].isin(categories)].sort_values(by=['category'])
 
 # IMPLEMENT ME: Convert queries to lowercase, and optionally implement other normalization, like stemming.
+for index, row in queries_df.iterrows():
+    query = row['query']
+    query_st = re.sub(r'[\W_]+', ' ', query.lower())
+    singles = [stemmer.stem(word) for word in query_st.split()]
+    row['query'] = ' '.join(singles)
 
 # IMPLEMENT ME: Roll up categories to ancestors to satisfy the minimum number of queries per category.
+while True:
+    queries_df_grouped = queries_df.groupby('category', as_index = False, sort = True).count()
+    filtered_queries_df_grouped = queries_df_grouped[queries_df_grouped['query'] < 1000]
+    merged_filtered_queries_df_grouped = pd.merge(filtered_queries_df_grouped, parents_df, on='category')
+    size = merged_filtered_queries_df_grouped.size
+    if size <= 1:
+        break
+    print('Size: ' + str(size))
+    min_category = merged_filtered_queries_df_grouped.iloc[0]['category']
+    max_category = merged_filtered_queries_df_grouped.iloc[-1]['category']
+    print(min_category + " -- " + max_category)
+    count = 0
+    for index, query_row in queries_df.iterrows():
+        category = query_row['category']
+        if (category < min_category) or (category > max_category):
+            continue
+        match_df = merged_filtered_queries_df_grouped[merged_filtered_queries_df_grouped['category'] == category]
+        if match_df.size > 0:
+            parent = match_df.iloc[0]['parent']
+            if category != parent:
+                query_row['category'] = parent
+                count += 1
+    if count == 0:
+        break
 
 # Create labels in fastText format.
 queries_df['label'] = '__label__' + queries_df['category']
